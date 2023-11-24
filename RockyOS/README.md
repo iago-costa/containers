@@ -1,9 +1,9 @@
-## Create a qcow2 disk
+- Create a qcow2 disk
 ```bash
 qemu-img create -f qcow2 img1.cow 20G
 ```
 
-## Run qemu first installation with kvm
+- Run qemu first installation with kvm
 ```bash
 sudo qemu-system-x86_64 \
     -enable-kvm \
@@ -16,7 +16,7 @@ sudo qemu-system-x86_64 \
     -drive file=${IMAGE},format=qcow2
 ```
 
-## Run image
+- Run image
 ```bash
 sudo qemu-system-x86_64 \
     -enable-kvm \
@@ -36,13 +36,13 @@ echo 1050 > /proc/sys/vm/nr_hugepages
 cat vim /proc/sys/vm/nr_hugepages
 ```
 
-## Keybindgs qemu window
+- Keybindgs qemu window
 ```
 control + alt + G - toggle mouse mode
 control + alt + F - toggle fullscreen
 ```
 
-## Internal networking
+- Internal networking
 ```bash
 # iptables allow packets in a bridged network
 iptables -I FORWARD -m physdev --physdev-is-bridged -j ACCEPT
@@ -53,11 +53,3 @@ nmap -sn 192.168.0.1/24
 ```
 
 
-
-## Kubernetes
-```bash
-# https://www.clearlinux.org/clear-linux-documentation/tutorials/kubernetes.html
-hostnamectl set-hostname
-sudo swupd update
-sudo swupd bundle-add network-basic
-sudo swupd bundle-add cloud-native-basic

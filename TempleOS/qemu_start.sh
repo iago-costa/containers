@@ -1,15 +1,15 @@
 #!/bin/bash
 # -*- mode: shell-script; indent-tabs-mode: nil; sh-basic-offset: 4; -*-
 # ex: ts=8 sw=4 sts=4 et filetype=sh
+# RAND_MAC=$(printf 'DE:AD:BE:EF:%02X:%02X\n' $((RANDOM%256)) $((RANDOM%256)))
 echo "Starting QEMU"
 echo "file QCow2: $1"
 echo "file ISO: $2"
 echo "bridge: $3"
 
 IMAGE="$1"
-BRIDGE="$2"
-TAP="$3"
-RAND_MAC=$(printf 'DE:AD:BE:EF:%02X:%02X\n' $((RANDOM%256)) $((RANDOM%256)))
+ISO="$2"
+BRIDGE="$3"
 
 # verify IMAGE is empty using variable
 if [ -z "$IMAGE" ]; then
@@ -17,16 +17,15 @@ if [ -z "$IMAGE" ]; then
     exit 1
 fi
 
+if [ -z "$ISO" ]; then
+    echo "ISO file not specified"
+    exit 1
+fi
+
 if [ -z "$BRIDGE" ]; then
     echo "Bridge not specified"
     exit 1
 fi
-
-if [ -z "$TAP" ]; then
-    echo "Tap file not specified"
-    exit 1
-fi
-
 
 # if --help is specified, print help and exit
 if [ "$1" == "--help" ]; then
@@ -40,7 +39,7 @@ sudo qemu-system-x86_64 \
     -smp sockets=1,cpus=4,cores=2 -cpu host \
     -m 2048 \
     -vga none -nographic \
-    -device virtio-net-pci,netdev=${BRIDGE},mac=${RAND_MAC} \
+    -device virtio-net-pci,netdev=${BRIDGE} \
     -netdev tap,id=${BRIDGE},ifname=${TAP},script=no,downscript=no,vhost=on \
     -debugcon file:${IMAGE}.log \
     ${IMAGE}
