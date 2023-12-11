@@ -1,3 +1,6 @@
 **.iso
 **.cow
 **.log
+**.qcow2
+nohup.out
+config
