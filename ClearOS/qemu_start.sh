@@ -3,13 +3,18 @@
 # ex: ts=8 sw=4 sts=4 et filetype=sh
 echo "Starting QEMU"
 echo "file QCow2: $1"
-echo "file ISO: $2"
-echo "bridge: $3"
+echo "bridge: $2"
+echo "tap: $3"
 
 IMAGE="$1"
 BRIDGE="$2"
 TAP="$3"
-RAND_MAC=$(printf 'DE:AD:BE:EF:%02X:%02X\n' $((RANDOM%256)) $((RANDOM%256)))
+# RAND_MAC=$(printf 'DE:AD:BE:EF:%02X:%02X\n' $((RANDOM%256)) $((RANDOM%256)))
+#
+# get the last character of the tap name
+TAP_LAST_CHAR=${TAP: -1}
+RAND_MAC=$(printf 'DE:AD:BE:EF:%02X:%02X\n' $TAP_LAST_CHAR $TAP_LAST_CHAR)
+
 
 # verify IMAGE is empty using variable
 if [ -z "$IMAGE" ]; then
