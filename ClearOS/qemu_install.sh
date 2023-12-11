@@ -40,6 +40,16 @@ if [ "$1" == "--help" ]; then
     exit 1
 fi
 
+## verify if the image file exists
+if [ ! -f "$IMAGE" ]; then
+    echo "Image file not found!"
+    sudo qemu-img create -f qcow2 ${IMAGE} 20G
+    echo "Image file created!"
+else
+    echo "Image file found!"
+    exit 1
+fi
+
 sudo qemu-system-x86_64 \
     -enable-kvm \
     -cpu host \
