@@ -68,6 +68,22 @@ sudo swupd bundle-add cloud-native-basic
 ```
 
 
+## Init k8s
+```bash
+sudo kubeadm init \
+--cri-socket=/run/containerd/containerd.sock \
+--pod-network-cidr 10.244.0.0/16
+```
+
+
+## Reset k8s
+```bash
+sudo kubeadm reset -f || true
+rm -rf $HOME/.kube/config || true
+rm -rf /etc/cni/net.d || true
+```
+
+
 ## kubeadm start/join
 Your Kubernetes control-plane has initialized successfully!
 
@@ -77,28 +93,21 @@ To start using your cluster, you need to run the following as a regular user:
   sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
   sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
-Alternatively, if you are the root user, you can run:
-
-  export KUBECONFIG=/etc/kubernetes/admin.conf
-
-You should now deploy a pod network to the cluster.
-Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
-  https://kubernetes.io/docs/concepts/cluster-administration/addons/
-
 Then you can join any number of worker nodes by running the following on each as root:
 
-kubeadm join 192.168.0.133:6443 --token 5kkld9.6bwjt8g3wsbsms2v \
-        --discovery-token-ca-cert-hash sha256:2b3215a2c15d662b60165a3c8260ef3b88cdd93d217f9727fe8c0abb52cea510
+kubeadm join 192.168.0.136:6443 --token u7ijie.ld8g9uk41nrtwxij \
+        --discovery-token-ca-cert-hash sha256:85a6729ae9f2476367c263d22e4028eb37146511bbb7d7991635ecdb9ed65c9c
 
 cat $HOME/.kube/config
 
 
-## Check pods system
+## Check nodes/pods status (K8s)
 kubectl get pods -n kube-system
+kubectl describe node
 
 
 ## Config Container Network Interface (CNI)
-1. Up to date aws cni config 
+1. Up to date flannel cni config 
 kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
 kubectl delete -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
 
@@ -115,6 +124,9 @@ kubectl delete -f "https://github.com/weaveworks/weave/releases/download/v2.8.1/
 ## Logs kubelet
 ```bash
 journalctl -u kubelet
+
+sudo swapoff -a
+sudo rm /var/swapfile
 ```
 
 ## Activate ssh in master node
