@@ -2,8 +2,15 @@
 ## Init k8s
 ```bash
 sudo kubeadm init \
+--apiserver-advertise-address=<ip> \
 --cri-socket=/run/containerd/containerd.sock \
 --pod-network-cidr 10.244.0.0/16
+
+sudo kubeadm init \
+--apiserver-advertise-address=10.0.0.212 \
+--cri-socket=/run/containerd/containerd.sock \
+--pod-network-cidr=10.244.0.0/16
+
 ```
 
 ## Reset k8s
@@ -51,6 +58,10 @@ kubeadm join 192.168.0.130:6443 --token 0a7eo3.zbird8xnknlrcf82 \
 
 cat $HOME/.kube/config
 
+```bash
+kubeadm token create --print-join-command
+```
+
 ### Check pods system
 kubectl get pods -n kube-system
 
@@ -63,11 +74,44 @@ mkdir -p /opt/cni/bin
 curl -O -L https://github.com/containernetworking/plugins/releases/download/v1.2.0/cni-plugins-linux-amd64-v1.2.0.tgz
 tar -C /opt/cni/bin -xzf cni-plugins-linux-amd64-v1.2.0.tgz
 
-2. Outdated weave cni config
+2. Calico cni config
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/tigera-operator.yaml
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/custom-resources.yaml
+
+watch kubectl get pods -n calico-system
+kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+kubectl taint nodes --all node-role.kubernetes.io/master-
+kubectl get nodes,po,svc -o wide
+
+2-1. Delete calico config
+kubectl delete -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/tigera-operator.yaml
+kubectl delete -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/custom-resources.yaml
+
+3. Outdated weave cni config
 kubectl apply -f "https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s-1.11.yaml"
 kubectl delete -f "https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s-1.11.yaml"
+
+
 
 ### Logs kubelet
 ```bash
 journalctl -u kubelet
+```
+
+## Copy kube config to local
+```bash
+scp -O master-oracle-k8s-no-dns:/root/.kube/config "config"
+#copy file config to clipboard using xclip
+cat config | xclip -selection clipboard
+```
+
+
+## Run nginx aand expose port 3000 3 replicas
+```bash
+kubectl run nginx --image=nginx --port=3000 --expose 3000
+kubectl expose deployment nginx --type=NodePort
+kubectl get node,po,svc -A -o wide
+# delete service and deployment
+kubectl delete svc nginx
+kubectl delete deployment nginx
 ```
