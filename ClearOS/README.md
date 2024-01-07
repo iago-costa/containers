@@ -71,18 +71,26 @@ sudo swupd bundle-add cloud-native-basic
 ## Init k8s
 ```bash
 sudo kubeadm init \
+--apiserver-advertise-address=<ip> \
+--cri-socket=/run/containerd/containerd.sock \
+--pod-network-cidr 10.244.0.0/16
+
+sudo kubeadm init \
+--apiserver-advertise-address=158.101.13.67 \
+--cri-socket=/run/containerd/containerd.sock \
+--pod-network-cidr=10.244.0.0/16
+
+sudo kubeadm init \
 --cri-socket=/run/containerd/containerd.sock \
 --pod-network-cidr 10.244.0.0/16
 ```
 
-
 ## Reset k8s
 ```bash
 sudo kubeadm reset -f || true
-rm -rf $HOME/.kube/config || true
-rm -rf /etc/cni/net.d || true
+sudo rm -rf $HOME/.kube/config || true
+sudo rm -rf /etc/cni/net.d || true
 ```
-
 
 ## kubeadm start/join
 Your Kubernetes control-plane has initialized successfully!
@@ -100,6 +108,9 @@ kubeadm join 192.168.0.136:6443 --token u7ijie.ld8g9uk41nrtwxij \
 
 cat $HOME/.kube/config
 
+```bash
+kubeadm token create --print-join-command
+```
 
 ## Check nodes/pods status (K8s)
 kubectl get pods -n kube-system
@@ -165,3 +176,4 @@ scp -O master-k8s-1:/root/.kube/config "config"
 sudo nmap -snP 192.168.0.1/24
 sudo nmap -p1-65535 -sV -sS -T4 192.168.0.1/24
 ```
+
