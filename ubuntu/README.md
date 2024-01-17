@@ -38,6 +38,7 @@ curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --
 echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
 sudo apt-get update
 sudo apt-get install -y kubectl kubeadm kubelet
+sudo snap install helm --classic
 ```
 
 ### Iptables rules for oracle cloud
@@ -52,5 +53,9 @@ vim /etc/iptables/rules.v4
 -A INPUT -p tcp -m state --state NEW -m tcp --dport 10259 -j ACCEPT
 -A INPUT -p tcp -m state --state NEW -m tcp --dport 10257 -j ACCEPT
 -A INPUT -p tcp -m state --state NEW -m tcp --dport 30000:32767 -j ACCEPT
+-A INPUT -p tcp -m state --state NEW -m tcp --dport 443 -j ACCEPT
+-A INPUT -p tcp -m state --state NEW -m tcp --dport 53 -j ACCEPT
+-A INPUT -p tcp -m state --state NEW -m tcp --dport 32768:60000 -j ACCEPT
+
 iptables-restore < /etc/iptables/rules.v4
 ```

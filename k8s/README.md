@@ -91,8 +91,6 @@ kubectl delete -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0
 kubectl apply -f "https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s-1.11.yaml"
 kubectl delete -f "https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s-1.11.yaml"
 
-
-
 ### Logs kubelet
 ```bash
 journalctl -u kubelet
@@ -105,7 +103,6 @@ scp -O master-oracle-k8s-no-dns:/root/.kube/config "config"
 cat config | xclip -selection clipboard
 ```
 
-
 ## Run nginx aand expose port 3000 3 replicas
 ```bash
 kubectl run nginx --image=nginx --port=3000 --expose 3000
@@ -114,4 +111,96 @@ kubectl get node,po,svc -A -o wide
 # delete service and deployment
 kubectl delete svc nginx
 kubectl delete deployment nginx
+```
+
+## Run ServiceAccount and RBAC
+```bash
+kubectl apply -f sa.yaml
+kubectl apply -f rbac.yaml
+kubectl get sa,role,rolebinding -A -o wide
+kubectl delete -f sa.yaml
+kubectl delete -f rbac.yaml
+```
+
+## Kube proxy
+```bash
+kubectl proxy --address 0.0.0.0 --accept-hosts '.*' --port=30725
+```
+
+## Prometheus
+```bash
+git clone https://github.com/techiescamp/kubernetes-prometheus
+kubectl create namespace monitoring
+kubectl create -f clusterRole.yaml
+kubectl create -f config-map.yaml
+kubectl create -f prometheus-deployment.yaml
+kubectl get deployments --namespace=monitoring
+# https://devopscube.com/setup-prometheus-monitoring-on-kubernetes/
+```
+
+## Prometheus Stack
+```bash
+# https://opensource.com/article/20/6/kubernetes-lens
+# https://github.com/digitalocean/Kubernetes-Starter-Kit-Developers/blob/main/04-setup-observability/prometheus-stack.md#step-1---installing-the-prometheus-stack
+git clone 
+```
+
+## Kube state metrics
+```bash
+git clone https://github.com/kubernetes/kube-state-metrics?tab=readme-ov-file#kubernetes-deployment
+kubectl apply -f kube-state-metrics/examples/standard
+kubectl get pods -n kube-system
+```
+
+## CoreDNS No route to host
+```bash
+# verify iptables
+iptables -L
+iptables -S
+# clean block iptables
+iptables -F
+iptables -X
+iptables -t nat -F
+iptables -t nat -X
+```
+
+## Service troubleshooting
+```bash
+# Intermittent connection refused errors
+# Verify the labels on the pod and service selectors match
+kubectl get pods --show-labels
+kubectl get svc --show-labels
+# Verify the selectors match from svc and labels from pods
+kubectl describe svc <service-name>
+kubectl describe pod <pod-name>
+# Verify the endpoints are populated
+kubectl get endpoints <service-name>
+# Verify the pod is running
+kubectl get pods
+# Verify the service is running
+kubectl get svc
+# Verify the service is reachable from the node
+curl http://<node-ip>:<node-port>
+# Verify the service is reachable from another pod
+kubectl run -it --rm --restart=Never busybox --image=busybox sh
+wget -qO- http://<service-name>:<service-port>
+# Verify the service is reachable from outside the cluster
+kubectl run -it --rm --restart=Never busybox --image=busybox sh
+wget -qO- http://<node-ip>:<node-port>
+# Verify the service is reachable from inside the cluster
+kubectl run -it --rm --restart=Never busybox --image=busybox sh
+wget -qO- http://<service-name>:<service-port>
+# Verify the service is reachable from the cluster network
+kubectl run -it --rm --restart=Never busybox --image=busybox sh
+wget -qO- http://<service-name>.<namespace-name>.svc.cluster.local:<service-port>
+# Verify the service is reachable from the cluster DNS
+kubectl run -it --rm --restart=Never busybox --image=busybox sh
+wget -qO- http://<service-name>.<namespace-name>.svc.cluster.local:<service-port>
+```
+
+## Helm install
+```bash
+# https://helm.sh/docs/intro/install/
+# https://helm.sh/docs/intro/quickstart/
+sudo snap install helm --classic
 ```
