@@ -85,7 +85,6 @@ mkdir -p /opt/cni/bin
 curl -O -L https://github.com/containernetworking/plugins/releases/download/v1.4.0/cni-plugins-linux-amd64-v1.4.0.tgz
 sudo tar -C /opt/cni/bin -xzf cni-plugins-linux-amd64-v1.4.0.tgz
 
-
 mkdir -p /opt/cni/bin
 curl -O -L https://github.com/containernetworking/plugins/releases/download/v1.4.0/cni-plugins-linux-arm-v1.4.0.tgz
 sudo tar -C /opt/cni/bin -xzf cni-plugins-linux-arm-v1.4.0.tgz
