@@ -70,6 +70,9 @@ kubectl get pods -n kube-system
 kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
 kubectl delete -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
 
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.
+yml
+
 mkdir -p /opt/cni/bin
 curl -O -L https://github.com/containernetworking/plugins/releases/download/v1.2.0/cni-plugins-linux-amd64-v1.2.0.tgz
 tar -C /opt/cni/bin -xzf cni-plugins-linux-amd64-v1.2.0.tgz
@@ -94,6 +97,16 @@ kubectl delete -f "https://github.com/weaveworks/weave/releases/download/v2.8.1/
 ### Logs kubelet
 ```bash
 journalctl -u kubelet
+```
+
+### Disable iptables
+```bash
+sudo iptables -L -v
+sudo iptables -F
+sudo iptables -P INPUT ACCEPT
+sudo iptables -P FORWARD ACCEPT
+sudo iptables -P OUTPUT ACCEPT
+sudo systemctl disable netfilter-persistent
 ```
 
 ## Copy kube config to local
@@ -204,3 +217,70 @@ wget -qO- http://<service-name>.<namespace-name>.svc.cluster.local:<service-port
 # https://helm.sh/docs/intro/quickstart/
 sudo snap install helm --classic
 ```
+
+### Install kube-prometheus-stack
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+helm install kube-prometheus-stack \
+  --create-namespace \
+  --namespace kube-prometheus-stack \
+  prometheus-community/kube-prometheus-stack
+kubectl -n kube-prometheus-stack get pods
+kubectl port-forward --address 10.0.0.212 -n kube-prometheus-stack svc/kube-prometheus-stack-prometheus 32000:9090
+```
+
+## Config nfs-client-provisioner
+```bash
+# https://medium.com/@shatoddruh/kubernetes-how-to-install-the-nfs-server-and-nfs-dynamic-provisioning-on-azure-virtual-machines-e85f918c7f4b
+
+# Install nfs-kernel-server (only the NFS server)
+sudo apt update
+sudo apt install nfs-kernel-server
+
+# Only for master and worker nodes
+sudo apt update
+sudo apt install nfs-common
+
+# Create a directory for the NFS share (only the NFS server)
+sudo mkdir /var/nfs/general -p
+ls -la /var/nfs/general
+sudo chown nobody:nogroup /var/nfs/general
+
+# config exports file
+sudo vim /etc/exports
+# /var/nfs/general    <ip-of-master-node>(rw,sync,no_subtree_check)
+# /var/nfs/general    <ip-of-worker-node>(rw,sync,no_subtree_check)
+
+# Restart the NFS server
+sudo systemctl restart nfs-kernel-server
+
+# Allow in ufw
+sudo ufw allow from <ip-of-master-node> to any port nfs
+sudo ufw allow from <ip-of-worker-node> to any port nfs
+
+# (On master node) folder /var/nfs/general should be mounted
+sudo mkdir -p /nfs/general
+sudo mount <nfs-server-ip>:/var/nfs/general /nfs/general
+df -h
+sudo touch /nfs/general/general.test
+ls -l /nfs/general/general.test
+
+# Open file /etc/fstab and add the following line
+sudo vim /etc/fstab
+<nfs-server-ip>:/var/nfs/general    /nfs/general   nfs auto,nofail,noatime,nolock,intr,tcp,actimeo=1800 0 0
+
+# Save and exit the file and reboot the system
+sudo reboot -f
+
+# Install nfs-client-provisioner
+helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
+helm repo update
+helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-extern
+al-provisioner \
+    --set nfs.server=10.0.0.212 \
+    --set nfs.path=/var/nfs/general \
+    --set storageClass.name=nfs
+```
+
+
