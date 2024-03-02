@@ -1,0 +1,85 @@
+apiVersion: purelb.io/v1
+kind: ServiceGroup
+metadata:
+  name: default
+  namespace: purelb
+spec:
+  local:
+    v4pools:
+    # - subnet: 192.168.254.0/24
+    #   pool: 192.168.254.230/32
+    #   aggregation: default
+    - subnet: 192.168.254.0/24
+      pool: 192.168.254.231-192.168.254.240
+      aggregation: default
+    v6pools:
+    - subnet: fd53:9ef0:8683::/120
+      pool: fd53:9ef0:8683::-fd53:9ef0:8683::3
+      aggregation: default
+
+---
+
+apiVersion: purelb.io/v1
+kind: ServiceGroup
+metadata:
+  name: ipv4-routed
+  namespace: purelb
+spec:
+  local:
+    aggregation: /32
+    pool: 172.30.200.155-172.30.200.160
+    subnet: 172.30.200.0/24
+
+---
+
+apiVersion: crd.projectcalico.org/v1
+kind: IPPool
+metadata:
+  name: purelb-ipv4
+spec:
+  cidr: 172.30.200.0/24
+  disabled: true
+
+---
+
+apiVersion: purelb.io/v1
+kind: ServiceGroup
+metadata:
+  name: ipv6-routed
+  namespace: purelb
+spec:
+  local:
+    aggregation: /128
+    pool: 2001:470:8bf5:2:2::1-2001:470:8bf5:2:2::ffff
+    subnet: 2001:470:8bf5:2::/64
+
+---
+
+apiVersion: crd.projectcalico.org/v1
+kind: IPPool
+metadata:
+  name: purelb-ipv6
+spec:
+  cidr: 2001:470:8bf5:2::/64
+  disabled: true
+
+---
+
+apiVersion: crd.projectcalico.org/v1
+kind: BGPConfiguration
+metadata:
+  name: default
+spec:
+  asNumber: 4200000101
+  listenPort: 179
+  logSeverityScreen: Info
+  nodeToNodeMeshEnabled: false
+  prefixAdvertisements:
+  - cidr: 172.30.200.0/24
+    communities:
+    - purelb
+    - 100:100
+  - cidr: 2001:470:8bf5:2::/64
+    communities:
+    - purelb
+    - 100:100

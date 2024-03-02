@@ -1,0 +1,75 @@
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: first-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - 10.0.0.40-10.0.0.60
+
+---
+
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: example
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - first-pool
+
+---
+
+# apiVersion: metallb.io/v1beta2
+# kind: BGPPeer
+# metadata:
+#   name: sample
+#   namespace: metallb-system
+# spec:
+#   myASN: 64500
+#   peerASN: 64501
+#   peerAddress: 10.0.0.1
+
+# ---
+
+# apiVersion: metallb.io/v1beta1
+# kind: BGPAdvertisement
+# metadata:
+#   name: example
+#   namespace: metallb-system
+
+# ---
+
+# apiVersion: metallb.io/v1beta1
+# kind: BGPAdvertisement
+# metadata:
+#   name: example
+#   namespace: metallb-system
+# spec:
+#   ipAddressPools:
+#   - first-pool
+
+# ---
+
+# apiVersion: metallb.io/v1beta1
+# kind: BFDProfile
+# metadata:
+#   name: testbfdprofile
+#   namespace: metallb-system
+# spec:
+#   receiveInterval: 380
+#   transmitInterval: 270
+
+# ---
+
+# apiVersion: metallb.io/v1beta2
+# kind: BGPPeer
+# metadata:
+#   name: peersample
+#   namespace: metallb-system
+# spec:
+#   myASN: 64512
+#   peerASN: 64512
+#   peerAddress: 172.30.0.3
+#   bfdProfile: testbfdprofile
+

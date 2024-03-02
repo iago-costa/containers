@@ -29,34 +29,39 @@ rm -rf /etc/cni/net.d || true
 3. Docker
 
 ### Add nodes
+```bash
 You can now join any number of machines by running the following on each node
 as root:
 
 kubeadm join <control-plane-host>:<control-plane-port> --token <token> --discovery-token-ca-cert-hash sha256:<hash>
+```
 
 ### kubeadm start/join
-Your Kubernetes control-plane has initialized successfully!
 
-To start using your cluster, you need to run the following as a regular user:
+```bash
+# Your Kubernetes control-plane has initialized successfully!
+
+# To start using your cluster, you need to run the following as a regular user:
 
   mkdir -p $HOME/.kube
   sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
   sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
-Alternatively, if you are the root user, you can run:
+# Alternatively, if you are the root user, you can run:
 
   export KUBECONFIG=/etc/kubernetes/admin.conf
 
-You should now deploy a pod network to the cluster.
-Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
-  https://kubernetes.io/docs/concepts/cluster-administration/addons/
+#You should now deploy a pod network to the cluster.
+#Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
+#  https://kubernetes.io/docs/concepts/cluster-administration/addons/
 
-Then you can join any number of worker nodes by running the following on each as root:
+# Then you can join any number of worker nodes by running the following on each as root:
 
 kubeadm join 192.168.0.130:6443 --token 0a7eo3.zbird8xnknlrcf82 \
         --discovery-token-ca-cert-hash sha256:e1f54d33b3b57423dc830d1b406dfc9804a1d9c70b376cd5b0ae722f68190df9
 
 cat $HOME/.kube/config
+```
 
 ```bash
 kubeadm token create --print-join-command
@@ -66,7 +71,8 @@ kubeadm token create --print-join-command
 kubectl get pods -n kube-system
 
 ### Config Container Network Interface (CNI)
-1. Up to date flannel cni config 
+1. Up to date flannel cni config
+```bash
 kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
 kubectl delete -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
 
@@ -77,7 +83,10 @@ mkdir -p /opt/cni/bin
 curl -O -L https://github.com/containernetworking/plugins/releases/download/v1.2.0/cni-plugins-linux-amd64-v1.2.0.tgz
 tar -C /opt/cni/bin -xzf cni-plugins-linux-amd64-v1.2.0.tgz
 
+```
+
 2. Calico cni config
+```bash
 kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/tigera-operator.yaml
 kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/custom-resources.yaml
 
@@ -85,21 +94,24 @@ watch kubectl get pods -n calico-system
 kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 kubectl taint nodes --all node-role.kubernetes.io/master-
 kubectl get nodes,po,svc -o wide
-
+```
 2-1. Delete calico config
+```bash
 kubectl delete -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/tigera-operator.yaml
 kubectl delete -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/custom-resources.yaml
-
+```
 3. Outdated weave cni config
+```bash
 kubectl apply -f "https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s-1.11.yaml"
 kubectl delete -f "https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s-1.11.yaml"
+```
 
 ### Logs kubelet
 ```bash
 journalctl -u kubelet
 ```
 
-### Disable iptables
+### Disable iptables in all nodes
 ```bash
 sudo iptables -L -v
 sudo iptables -F
@@ -107,6 +119,7 @@ sudo iptables -P INPUT ACCEPT
 sudo iptables -P FORWARD ACCEPT
 sudo iptables -P OUTPUT ACCEPT
 sudo systemctl disable netfilter-persistent
+sudo systemctl stop netfilter-persistent
 ```
 
 ## Copy kube config to local
@@ -283,4 +296,168 @@ al-provisioner \
     --set storageClass.name=nfs
 ```
 
+### Config ssl-tls cert and key
+```bash
+## Command to create the secret
+kubectl create secret tls ingress-cert --namespace dev --key=certs/ingress-tls.key --cert=certs/ingress-tls.crt
+```
 
+### Example config ingress
+```yaml
+# example: https://snyk.io/blog/setting-up-ssl-tls-for-kubernetes-ingress/
+```
+
+## Config metallb for LoadBalancer and Ingress
+```bash
+kubectl create ns metallb-system
+kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.3/config/manifests/metallb-native.yaml
+kubectl delete -f https://raw.githubusercontent.com/metallb/metallb/v0.14.3/config/manifests/metallb-native.yaml
+```
+
+### Trouble shooting metallb
+```bash
+kubectl delete -A ValidatingWebhookConfiguration metallb-webhook-configuration
+```
+
+### Config metallb.yaml
+```yaml
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: first-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - 10.0.0.40-10.0.0.60 # Range of IP addresses -- For this work need liberate the range in router for TCP and UDP or another protocol in use
+
+---
+
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: example
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - first-pool
+
+```
+
+## Config purelb for LoadBalancer and Ingress
+```bash
+helm repo add purelb https://gitlab.com/api/v4/projects/20400619/packages/helm/stable
+helm repo update
+helm install --create-namespace --namespace=purelb purelb purelb/purelb
+
+helm uninstall --namespace=purelb purelb
+
+# To install the by manifest
+kubectl create ns purelb
+kubectl apply -f https://gitlab.com/api/v4/projects/purelb%2Fpurelb/packages/generic/manifest/0.0.1/purelb-complete.yaml
+
+# To uninstall the chart
+kubectl delete ns purelb
+kubectl delete -f https://gitlab.com/api/v4/projects/purelb%2Fpurelb/packages/generic/manifest/0.0.1/purelb-complete.yaml
+```
+
+## Config ingress-nginx-controller
+```bash
+helm upgrade --install ingress-nginx ingress-nginx \
+  --repo https://kubernetes.github.io/ingress-nginx \
+  --namespace ingress-nginx --create-namespace
+
+helm uninstall --namespace=ingress-nginx ingress-nginx
+
+# How delete namespace and all resources
+kubectl create ns ingress-nginx
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/baremetal/deploy.yaml
+
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/cloud/deploy.yaml
+
+kubectl delete ns ingress-nginx
+kubectl delete -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/baremetal/deploy.yaml
+
+kubectl delete -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/cloud/deploy.yaml
+
+```
+
+## Trouble shooting nginx controller
+```bash
+kubectl delete -A ValidatingWebhookConfiguration ingress-nginx-admission
+```
+
+## Links purelb and ingress-nginx-controller
+```bash
+https://kubernetes.github.io/ingress-nginx/deploy/
+https://kubernetes.github.io/ingress-nginx/deploy/baremetal/
+https://purelb.gitlab.io/docs/operation/services/
+```
+
+### Config in /etc/hosts for ingress-nginx work
+```bash
+ip-service-loadbalancer ingress
+```
+
+### Proxy reverse with nginx
+```bash
+server {
+    listen 443 ssl;
+    server_name example.com;
+
+    ssl_certificate /etc/ssl/certs/tls.crt;
+    ssl_certificate_key /etc/ssl/private/tls.key;
+
+    ssl_session_cache builtin:1000 shared:SSL:10m;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!eNULL:!EXPORT:!CAMELLIA:!DES:!MD5:!PSK:!RC4;
+    ssl_prefer_server_ciphers on;
+
+    location / {
+        proxy_pass http://ingress;
+        proxy_set_header Host $host;
+        proxy_set_header X-Scheme $scheme;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+#### Move for folder
+```bash
+sudo mv ingress.conf /etc/nginx/conf.d/
+sudo systemctl start nginx
+sudo systemctl enable nginx
+sudo systemctl status nginx
+sudo systemctl reload nginx
+sudo systemctl stop nginx
+sudo systemctl disable nginx
+```
+
+### Logs ingress-nginx-controller
+```bash
+kubectl logs --timestamps -n ingress-nginx ingress-nginx-controller-7dcdbcff84-dp8qf
+```
+
+### Links metallb and ingress-nginx-controller
+```bash
+https://kubernetes.github.io/ingress-nginx/deploy/baremetal/
+https://metallb.universe.tf/installation/
+https://www.reddit.com/r/kubernetes/comments/xkx0fo/kubernetes_on_baremetal_with_metallb/
+https://metallb.universe.tf/concepts/layer2/
+https://kubernetes.github.io/ingress-nginx/user-guide/basic-usage/
+https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-class
+```
+
+### Observations from this installation
+```txt
+# Allow in subnet traffic in TCP and UDP protocols
+# Install k8s with containerd as CRI
+# Install flannel for CNI
+# Install kube-state-metrics for see metrics from k8s
+# Install prometheus with kube-prometheus-stack for see metrics from k8s
+# Install nfs-client-provisioner for dynamic provisioning storage for database
+# Install ingress-nginx-controller for incomming traffic from virtual subnet, virtual private net and internet
+# Install metallb with provider cloud for loadbalancer incomming traffic from ingress-nginx-controller
+# Avoid use tls in ingress-nginx-controller
+# Use nginx as reverse proxy for ingress-nginx-controller
+```

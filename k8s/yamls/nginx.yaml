@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deploy
+  namespace: dev
+  labels:
+   app: nginx
+spec:
+    replicas: 3
+    selector:
+     matchLabels:
+      app: nginx
+    template:
+     metadata:
+      labels:
+       app: nginx
+     spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+          name: http
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-svc
+  namespace: dev
+  labels:
+    app: nginx
+  annotations:
+    purelb.io/service-group: default
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  sessionAffinity: None
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http
+  selector:
+    app: nginx
+  #loadBalancerIP: 10.0.0.92
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-ingress
+  namespace: dev
+  labels:
+    app: nginx
+spec:
+  ingressClassName: nginx
+  # tls:
+  #   - hosts:
+  #     - docker.devops.log.br
+  #     secretName: devops-log-br
+  rules:
+  - host: "docker.devops.log.br"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx-svc
+            port:
+              number: 80
