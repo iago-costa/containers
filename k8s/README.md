@@ -1,3 +1,14 @@
+### Disable iptables in all nodes
+```bash
+sudo iptables -L -v
+sudo iptables -F
+sudo iptables -P INPUT ACCEPT
+sudo iptables -P FORWARD ACCEPT
+sudo iptables -P OUTPUT ACCEPT
+sudo systemctl disable netfilter-persistent
+sudo systemctl stop netfilter-persistent
+```
+
 
 ## Init k8s
 ```bash
@@ -111,17 +122,6 @@ kubectl delete -f "https://github.com/weaveworks/weave/releases/download/v2.8.1/
 journalctl -u kubelet
 ```
 
-### Disable iptables in all nodes
-```bash
-sudo iptables -L -v
-sudo iptables -F
-sudo iptables -P INPUT ACCEPT
-sudo iptables -P FORWARD ACCEPT
-sudo iptables -P OUTPUT ACCEPT
-sudo systemctl disable netfilter-persistent
-sudo systemctl stop netfilter-persistent
-```
-
 ## Copy kube config to local
 ```bash
 scp -O master-oracle-k8s-no-dns:/root/.kube/config "config"
@@ -129,7 +129,7 @@ scp -O master-oracle-k8s-no-dns:/root/.kube/config "config"
 cat config | xclip -selection clipboard
 ```
 
-## Run nginx aand expose port 3000 3 replicas
+## Run nginx and expose port 3000 3 replicas
 ```bash
 kubectl run nginx --image=nginx --port=3000 --expose 3000
 kubectl expose deployment nginx --type=NodePort
@@ -178,7 +178,7 @@ kubectl apply -f kube-state-metrics/examples/standard
 kubectl get pods -n kube-system
 ```
 
-## CoreDNS No route to host
+## Trouble CoreDNS No route to host
 ```bash
 # verify iptables
 iptables -L
@@ -261,9 +261,11 @@ ls -la /var/nfs/general
 sudo chown nobody:nogroup /var/nfs/general
 
 # config exports file
-sudo vim /etc/exports
-# /var/nfs/general    <ip-of-master-node>(rw,sync,no_subtree_check)
-# /var/nfs/general    <ip-of-worker-node>(rw,sync,no_subtree_check)
+sudo cat << EOF | sudo tee -a /etc/exports 
+/var/nfs/general    <ip-of-master-node>(rw,sync,no_subtree_check)
+/var/nfs/general    <ip-of-worker-node>(rw,sync,no_subtree_check)
+/var/nfs/general    <ip-of-worker-node>(rw,sync,no_subtree_check)
+EOF
 
 # Restart the NFS server
 sudo systemctl restart nfs-kernel-server
@@ -291,15 +293,9 @@ helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/
 helm repo update
 helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-extern
 al-provisioner \
-    --set nfs.server=10.0.0.212 \
+    --set nfs.server=<ip-of-master-node> \
     --set nfs.path=/var/nfs/general \
     --set storageClass.name=nfs
-```
-
-### Config ssl-tls cert and key
-```bash
-## Command to create the secret
-kubectl create secret tls ingress-cert --namespace dev --key=certs/ingress-tls.key --cert=certs/ingress-tls.crt
 ```
 
 ### Example config ingress
@@ -307,7 +303,7 @@ kubectl create secret tls ingress-cert --namespace dev --key=certs/ingress-tls.k
 # example: https://snyk.io/blog/setting-up-ssl-tls-for-kubernetes-ingress/
 ```
 
-## Config metallb for LoadBalancer and Ingress
+## Config metallb for LoadBalancer
 ```bash
 kubectl create ns metallb-system
 kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.3/config/manifests/metallb-native.yaml
@@ -320,7 +316,8 @@ kubectl delete -A ValidatingWebhookConfiguration metallb-webhook-configuration
 ```
 
 ### Config metallb.yaml
-```yaml
+```bash
+sudo cat << EOF | sudo tee -a metallb.yaml
 apiVersion: metallb.io/v1beta1
 kind: IPAddressPool
 metadata:
@@ -340,25 +337,10 @@ metadata:
 spec:
   ipAddressPools:
   - first-pool
-
+EOF
+sudo kubectl apply -f metallb.yaml
 ```
 
-## Config purelb for LoadBalancer and Ingress
-```bash
-helm repo add purelb https://gitlab.com/api/v4/projects/20400619/packages/helm/stable
-helm repo update
-helm install --create-namespace --namespace=purelb purelb purelb/purelb
-
-helm uninstall --namespace=purelb purelb
-
-# To install the by manifest
-kubectl create ns purelb
-kubectl apply -f https://gitlab.com/api/v4/projects/purelb%2Fpurelb/packages/generic/manifest/0.0.1/purelb-complete.yaml
-
-# To uninstall the chart
-kubectl delete ns purelb
-kubectl delete -f https://gitlab.com/api/v4/projects/purelb%2Fpurelb/packages/generic/manifest/0.0.1/purelb-complete.yaml
-```
 
 ## Config ingress-nginx-controller
 ```bash
@@ -386,20 +368,16 @@ kubectl delete -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/con
 kubectl delete -A ValidatingWebhookConfiguration ingress-nginx-admission
 ```
 
-## Links purelb and ingress-nginx-controller
-```bash
-https://kubernetes.github.io/ingress-nginx/deploy/
-https://kubernetes.github.io/ingress-nginx/deploy/baremetal/
-https://purelb.gitlab.io/docs/operation/services/
-```
-
 ### Config in /etc/hosts for ingress-nginx work
 ```bash
+sudo cat << EOF | sudo tee -a /etc/hosts
 ip-service-loadbalancer ingress
+EOF
 ```
 
 ### Proxy reverse with nginx
 ```bash
+sudo cat << EOF | sudo tee -a /etc/nginx/conf.d/ingress.conf
 server {
     listen 443 ssl;
     server_name example.com;
@@ -420,11 +398,11 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 }
+EOF
 ```
 
-#### Move for folder
+#### Systemctl nginx
 ```bash
-sudo mv ingress.conf /etc/nginx/conf.d/
 sudo systemctl start nginx
 sudo systemctl enable nginx
 sudo systemctl status nginx
@@ -450,14 +428,53 @@ https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-class
 
 ### Observations from this installation
 ```txt
-# Allow in subnet traffic in TCP and UDP protocols
-# Install k8s with containerd as CRI
-# Install flannel for CNI
-# Install kube-state-metrics for see metrics from k8s
-# Install prometheus with kube-prometheus-stack for see metrics from k8s
-# Install nfs-client-provisioner for dynamic provisioning storage for database
-# Install ingress-nginx-controller for incomming traffic from virtual subnet, virtual private net and internet
-# Install metallb with provider cloud for loadbalancer incomming traffic from ingress-nginx-controller
-# Avoid use tls in ingress-nginx-controller
-# Use nginx as reverse proxy for ingress-nginx-controller
+Allow in subnet traffic in TCP and UDP protocols
+Install k8s with containerd as CRI
+Install flannel for CNI
+Install kube-state-metrics for see metrics from k8s
+Install prometheus with kube-prometheus-stack for see metrics from k8s
+Install nfs-client-provisioner for dynamic provisioning storage for database
+Install ingress-nginx-controller for incomming traffic from virtual subnet, virtual private net and internet
+Install metallb with provider cloud for loadbalancer incomming traffic from ingress-nginx-controller
+Avoid use tls in ingress-nginx-controller
+Use nginx as reverse proxy for ingress-nginx-controller
 ```
+
+## Extra alternative but not validated yet
+### Config purelb for LoadBalancer
+```bash
+helm repo add purelb https://gitlab.com/api/v4/projects/20400619/packages/helm/stable
+helm repo update
+helm install --create-namespace --namespace=purelb purelb purelb/purelb
+
+helm uninstall --namespace=purelb purelb
+
+# To install the by manifest
+kubectl create ns purelb
+kubectl apply -f https://gitlab.com/api/v4/projects/purelb%2Fpurelb/packages/generic/manifest/0.0.1/purelb-complete.yaml
+
+# To uninstall the chart
+kubectl delete ns purelb
+kubectl delete -f https://gitlab.com/api/v4/projects/purelb%2Fpurelb/packages/generic/manifest/0.0.1/purelb-complete.yaml
+```
+
+### Links purelb and ingress-nginx-controller
+```bash
+https://kubernetes.github.io/ingress-nginx/deploy/
+https://kubernetes.github.io/ingress-nginx/deploy/baremetal/
+https://purelb.gitlab.io/docs/operation/services/
+```
+
+### Config ssl-tls cert and key
+```bash
+## Command to create the secret
+kubectl create secret tls ingress-cert --namespace dev --key=certs/ingress-tls.key --cert=certs/ingress-tls.crt
+```
+
+
+### How to sed all string: <ip-of-master-node> in entire file
+```bash
+read -p "Enter the ip of master node: " ip
+sed -i 's/<ip-of-master-node>/'$ip'/g' master-aarch64.sh
+```
+

@@ -90,8 +90,3 @@ curl -O -L https://github.com/containernetworking/plugins/releases/download/v1.4
 sudo tar -C /opt/cni/bin -xzf cni-plugins-linux-arm-v1.4.0.tgz
 
 
-## Links troubleshooting
-# https://www.nocentino.com/posts/2021-12-27-installing-and-configuring-containerd-as-a-kubernetes-container-runtime/
-# https://kubernetes.io/docs/reference/networking/ports-and-protocols/
-# https://superuser.com/questions/1487012/no-route-to-host-when-trying-to-connect-to-a-tcp-service-on-an-oracle-cloud-in
-
