@@ -1,0 +1,185 @@
+## Default values for the RabbitMQ deployment
+
+# Add repo
+# helm repo add groundhog2k https://groundhog2k.github.io/helm-charts/
+
+# To install with helm
+# helm install rabbitmq-arm groundhog2k/rabbitmq --values rabbitmq-arm64.yaml --namespace database
+
+# To get pods
+# kubectl get po -n database
+
+# To enter in pod
+# kubectl exec -it mongo-arm-mongodb-68b7564f89-7plq7 -- /bin/bash
+
+# To uninstall
+# helm uninstall rabbitmq-arm -n database
+
+# New root user
+# rabbitmqctl add_user admin admin
+
+# Delete user
+# rabbitmqctl delete_user guest
+#
+# kubectl label nodes <node-name> <label-key>=<label-value>
+# kubectl label nodes master kubernetes.io/arch=arm64v8 --overwrite=true
+
+## RabbitMQ docker image
+## use arm64v8/rabbitmq for the same image on ARM64v8
+image:
+  repository: arm64v8/rabbitmq
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+## Pull secrets and name override options
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+## Number of replicas
+replicaCount: 1
+
+## Additional pod annotations
+podAnnotations: {}
+
+## Pod security options
+podSecurityContext: {}
+
+podManagementPolicy: OrderedReady
+
+updateStrategyType: RollingUpdate
+
+## Default security options to run RabbitMq as read only container without privilege escalation
+securityContext:
+  allowPrivilegeEscalation: false
+  privileged: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsGroup: 999
+  runAsUser: 999
+
+## Default RabbitMq service ports (default: AMQP port 5672, Management UI port 15672)
+service:
+  amqp:
+    port: 5672
+  mgmt:
+    port: 15672
+
+## Ingress configuration
+ingress:
+  enabled: true
+
+  ## Additional ingress annotations
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  # kubernetes.io/tls-acme: "true"
+
+  ## Hosts
+  hosts:
+    - host: rabbitmq.devops.log.br
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+
+#  tls:
+#    - hosts:
+#      - rabbitmq.local
+
+## Resource limits and requests
+resources: {}
+# limits:
+#    cpu: 100m
+#    memory: 512Mi
+# requests:
+#    cpu: 100m
+#    memory: 128Mi
+
+## Default node type for the image
+## use arm64v8 for the arm64v8/rabbitmq image
+nodeSelector:
+  kubernetes.io/arch: arm64
+
+tolerations: []
+affinity: {}
+
+## Default liveness probe
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 120
+  timeoutSeconds: 20
+  periodSeconds: 30
+  failureThreshold: 6
+  successThreshold: 1
+
+## Default startup probe
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  timeoutSeconds: 20
+  periodSeconds: 30
+  failureThreshold: 5
+  successThreshold: 1
+
+## Service account (necessary in cluster mode)
+serviceAccount:
+  create: true
+  ## The name of the ServiceAccount to use. (If not set and create is true, a name is generated using the rabbitmq.fullname template)
+  # name:
+
+## Create RBAC (necessary in cluster mode)
+rbac:
+  create: true
+
+## Additional environment variables
+env: []
+
+## Default Kubernetes cluster domain
+clusterDomain: cluster.local
+
+# Comma separated list of plugins (without whitespace!) - f.e.: rabbitmq_federation_management,rabbitmq_management,rabbitmq_mqtt,rabbitmq_stomp,rabbitmq_peer_discovery_k8s
+# plugins: rabbitmq_management,rabbitmq_peer_discovery_k8s
+
+# High memory watermark option is described at https://www.rabbitmq.com/memory.html
+options:
+  memoryHighWatermark:
+    enabled: false
+    type: "relative"
+    value: 0.4
+
+# Default user and erlang cookie
+# The erlang cookie is important for clustered or container based usage
+# Find more information about it at https://hub.docker.com/_/rabbitmq and https://www.rabbitmq.com/clustering.html#erlang-cookie
+# If password of erlang cookie not provided in configuration random values will be generated
+authentication:
+  ## Initial user name
+  user: admin
+
+  ## Initial password (default: random alphanumeric 10 characters)
+  password: example
+
+  ## Erlang cookie (default: Random base64 value)
+  erlangCookie: t45i28oa2hv9yvdbtmn71rke8f5zjgc0mzf1tsgzs8sratfxak9yuhmvrzhtx0lu2y8looxwlb13h3mbb0z8kwfsrg617ezluntvsu2oxzkqoc3ztk117cm7ve7mrl7g7lp94bxg7i1ifva4htks19aui9t8yfojgvrs8dj06vple4uwqeb19ahh49sghq9vhhcqbeje4bmh7rs2bqurv0xecjw8foffz90pmyfn7lv7geccvohca51kvng7l9o
+
+## Clustering settings
+clustering:
+  ## Cluster address type (default: hostname)
+  addressType: hostname
+  ## Rebalance queues with master when new replica is created
+  rebalance: true
+
+## Storage parameters
+storage:
+  ## Set persistentVolumenClaimName to reference an existing PVC
+  # persistentVolumeClaimName: <own-pvc-name>
+
+  ## Alternative set requestedSize to define a size for a dynamically created PVC
+  requestedSize: 1Gi
+
+  ## the storage class name
+  className: nfs
+
+  ## Default access mode (ReadWriteOnce)
+  accessModes:
+    - ReadWriteOnce
+
