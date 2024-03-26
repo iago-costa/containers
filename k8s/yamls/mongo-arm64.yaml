@@ -4,7 +4,7 @@
 # helm repo add groundhog2k https://groundhog2k.github.io/helm-charts/
 
 # To install with helm
-# helm install mongo-arm groundhog2k/mongodb --values mongodb-ground.yaml --namespace database
+# helm install mongo-arm groundhog2k/mongodb --values mongo-arm64.yaml --namespace database
 
 # To get pods
 # kubectl get po -n database

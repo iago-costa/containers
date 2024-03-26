@@ -24,6 +24,8 @@
 # kubectl label nodes <node-name> <label-key>=<label-value>
 # kubectl label nodes master kubernetes.io/arch=arm64v8 --overwrite=true
 
+## Post install need change clusterIP to LoadBalancer
+
 ## RabbitMQ docker image
 ## use arm64v8/rabbitmq for the same image on ARM64v8
 image:
